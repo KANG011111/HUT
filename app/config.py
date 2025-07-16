@@ -27,6 +27,24 @@ class Config:
             'GOOGLE_PRIVATE_KEY'
         ]
         
+        # 除錯：輸出所有環境變數的存在狀態
+        print("=== 環境變數除錯資訊 ===")
+        for var in required_vars + optional_google_vars:
+            value = os.getenv(var)
+            if value:
+                print(f"{var}: 已設定 (長度: {len(value)})")
+            else:
+                print(f"{var}: 未設定或為空")
+        
+        # 檢查所有環境變數
+        all_env_vars = dict(os.environ)
+        line_vars = {k: v for k, v in all_env_vars.items() if 'LINE' in k.upper()}
+        google_vars = {k: v for k, v in all_env_vars.items() if 'GOOGLE' in k.upper()}
+        
+        print(f"包含 LINE 的環境變數: {list(line_vars.keys())}")
+        print(f"包含 GOOGLE 的環境變數: {list(google_vars.keys())}")
+        print("========================")
+        
         missing_vars = []
         for var in required_vars:
             if not os.getenv(var):
