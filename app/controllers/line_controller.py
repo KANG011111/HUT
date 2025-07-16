@@ -13,6 +13,14 @@ line_bot_api = None
 handler = None
 line_service = None
 
+@line_bp.route('/line/test', methods=['GET'])
+def test_endpoint():
+    return {
+        'status': 'success',
+        'message': 'LINE Bot API is working',
+        'endpoint': '/api/line/webhook'
+    }
+
 def _init_line_services():
     """初始化 LINE 服務"""
     global line_bot_api, handler, line_service
@@ -36,13 +44,22 @@ def _init_line_services():
         
         logger.info("LINE 服務初始化成功")
 
-@line_bp.route('/line/webhook', methods=['POST'])
+@line_bp.route('/line/webhook', methods=['GET', 'POST'])
 def webhook():
+    # 處理 GET 請求（用於驗證）
+    if request.method == 'GET':
+        return 'LINE Bot webhook endpoint is working!', 200
+    
+    # 處理 POST 請求（實際的 webhook）
     try:
         # 初始化 LINE 服務
         _init_line_services()
         
-        signature = request.headers['X-Line-Signature']
+        signature = request.headers.get('X-Line-Signature')
+        if not signature:
+            logger.error("缺少 X-Line-Signature 標頭")
+            abort(400)
+        
         body = request.get_data(as_text=True)
         
         logger.info(f"收到 LINE webhook 請求: {body}")
