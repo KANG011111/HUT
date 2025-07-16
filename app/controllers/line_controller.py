@@ -8,18 +8,45 @@ from app.utils.logger import logger
 
 line_bp = Blueprint('line', __name__)
 
-line_bot_api = LineBotApi(Config.LINE_CHANNEL_ACCESS_TOKEN)
-handler = WebhookHandler(Config.LINE_CHANNEL_SECRET)
-line_service = LineService()
+# 延遲初始化，避免在導入時初始化
+line_bot_api = None
+handler = None
+line_service = None
+
+def _init_line_services():
+    """初始化 LINE 服務"""
+    global line_bot_api, handler, line_service
+    
+    if line_bot_api is None:
+        # 驗證環境變數
+        if not Config.LINE_CHANNEL_ACCESS_TOKEN:
+            logger.error("LINE_CHANNEL_ACCESS_TOKEN 環境變數未設定")
+            raise ValueError("LINE_CHANNEL_ACCESS_TOKEN 環境變數未設定")
+        
+        if not Config.LINE_CHANNEL_SECRET:
+            logger.error("LINE_CHANNEL_SECRET 環境變數未設定")
+            raise ValueError("LINE_CHANNEL_SECRET 環境變數未設定")
+        
+        line_bot_api = LineBotApi(Config.LINE_CHANNEL_ACCESS_TOKEN)
+        handler = WebhookHandler(Config.LINE_CHANNEL_SECRET)
+        line_service = LineService()
+        
+        # 註冊事件處理器
+        _register_handlers()
+        
+        logger.info("LINE 服務初始化成功")
 
 @line_bp.route('/line/webhook', methods=['POST'])
 def webhook():
-    signature = request.headers['X-Line-Signature']
-    body = request.get_data(as_text=True)
-    
-    logger.info(f"收到 LINE webhook 請求: {body}")
-    
     try:
+        # 初始化 LINE 服務
+        _init_line_services()
+        
+        signature = request.headers['X-Line-Signature']
+        body = request.get_data(as_text=True)
+        
+        logger.info(f"收到 LINE webhook 請求: {body}")
+        
         handler.handle(body, signature)
     except InvalidSignatureError:
         logger.error("無效的簽章")
@@ -30,7 +57,6 @@ def webhook():
     
     return 'OK'
 
-@handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     try:
         user_id = event.source.user_id
@@ -55,3 +81,9 @@ def handle_text_message(event):
             event.reply_token,
             TextMessage(text="抱歉，處理您的訊息時發生錯誤，請稍後再試。")
         )
+
+# 註冊事件處理器（延遲註冊）
+def _register_handlers():
+    """註冊事件處理器"""
+    if handler is not None:
+        handler.add(MessageEvent, message=TextMessage)(handle_text_message)
