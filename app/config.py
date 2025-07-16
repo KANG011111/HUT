@@ -14,9 +14,14 @@ class Config:
     
     @staticmethod
     def validate():
+        # 必須的 LINE Bot 環境變數
         required_vars = [
             'LINE_CHANNEL_ACCESS_TOKEN',
-            'LINE_CHANNEL_SECRET',
+            'LINE_CHANNEL_SECRET'
+        ]
+        
+        # 可選的 Google Sheets 環境變數
+        optional_google_vars = [
             'GOOGLE_SHEET_ID',
             'GOOGLE_SERVICE_ACCOUNT_EMAIL',
             'GOOGLE_PRIVATE_KEY'
@@ -29,5 +34,12 @@ class Config:
         
         if missing_vars:
             raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+        
+        # 檢查 Google Sheets 配置
+        google_vars_present = [var for var in optional_google_vars if os.getenv(var)]
+        if google_vars_present and len(google_vars_present) != len(optional_google_vars):
+            missing_google_vars = [var for var in optional_google_vars if not os.getenv(var)]
+            print(f"警告：Google Sheets 配置不完整，缺少: {', '.join(missing_google_vars)}")
+            print("將停用 Google Sheets 功能")
         
         return True

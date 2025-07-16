@@ -13,12 +13,16 @@ class GoogleSheetsService:
         try:
             # 檢查必要的環境變數
             if not Config.GOOGLE_SERVICE_ACCOUNT_EMAIL:
-                logger.error("GOOGLE_SERVICE_ACCOUNT_EMAIL 環境變數未設定")
-                raise ValueError("GOOGLE_SERVICE_ACCOUNT_EMAIL 環境變數未設定")
+                logger.warning("GOOGLE_SERVICE_ACCOUNT_EMAIL 環境變數未設定，跳過 Google Sheets 初始化")
+                return
             
             if not Config.GOOGLE_PRIVATE_KEY:
-                logger.error("GOOGLE_PRIVATE_KEY 環境變數未設定")
-                raise ValueError("GOOGLE_PRIVATE_KEY 環境變數未設定")
+                logger.warning("GOOGLE_PRIVATE_KEY 環境變數未設定，跳過 Google Sheets 初始化")
+                return
+            
+            if not Config.GOOGLE_SHEET_ID:
+                logger.warning("GOOGLE_SHEET_ID 環境變數未設定，跳過 Google Sheets 初始化")
+                return
             
             # 設定 Google Sheets 權限範圍
             scope = [
@@ -56,7 +60,8 @@ class GoogleSheetsService:
             logger.error(f"Google Sheets 初始化失敗: {str(e)}")
             logger.error(f"Google Service Account Email: {Config.GOOGLE_SERVICE_ACCOUNT_EMAIL}")
             logger.error(f"Google Sheet ID: {Config.GOOGLE_SHEET_ID}")
-            raise
+            logger.warning("Google Sheets 功能將被停用")
+            self.sheet = None
     
     def _ensure_headers(self):
         """確保工作表有正確的標題列"""
@@ -75,6 +80,10 @@ class GoogleSheetsService:
     
     def save_message(self, timestamp, user_id, user_name, message_content, message_type):
         """儲存訊息到 Google Sheets"""
+        if not self.sheet:
+            logger.warning("Google Sheets 未初始化，無法儲存訊息")
+            return
+            
         try:
             row_data = [timestamp, user_id, user_name, message_content, message_type]
             self.sheet.append_row(row_data)
@@ -86,11 +95,12 @@ class GoogleSheetsService:
             # 重試連線
             self._init_google_sheets()
             try:
-                self.sheet.append_row(row_data)
-                logger.info("重試後成功儲存訊息")
+                if self.sheet:
+                    self.sheet.append_row(row_data)
+                    logger.info("重試後成功儲存訊息")
             except Exception as retry_error:
                 logger.error(f"重試後仍無法儲存訊息: {str(retry_error)}")
-                raise
+                # 不拋出異常，讓 LINE Bot 繼續運作
     
     def get_all_messages(self):
         """獲取所有訊息"""
