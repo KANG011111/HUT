@@ -11,6 +11,15 @@ class GoogleSheetsService:
     def _init_google_sheets(self):
         """初始化 Google Sheets 連線"""
         try:
+            # 檢查必要的環境變數
+            if not Config.GOOGLE_SERVICE_ACCOUNT_EMAIL:
+                logger.error("GOOGLE_SERVICE_ACCOUNT_EMAIL 環境變數未設定")
+                raise ValueError("GOOGLE_SERVICE_ACCOUNT_EMAIL 環境變數未設定")
+            
+            if not Config.GOOGLE_PRIVATE_KEY:
+                logger.error("GOOGLE_PRIVATE_KEY 環境變數未設定")
+                raise ValueError("GOOGLE_PRIVATE_KEY 環境變數未設定")
+            
             # 設定 Google Sheets 權限範圍
             scope = [
                 "https://spreadsheets.google.com/feeds",
@@ -45,6 +54,8 @@ class GoogleSheetsService:
             
         except Exception as e:
             logger.error(f"Google Sheets 初始化失敗: {str(e)}")
+            logger.error(f"Google Service Account Email: {Config.GOOGLE_SERVICE_ACCOUNT_EMAIL}")
+            logger.error(f"Google Sheet ID: {Config.GOOGLE_SHEET_ID}")
             raise
     
     def _ensure_headers(self):

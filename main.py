@@ -12,3 +12,6 @@ if __name__ == '__main__':
     logger.info(f"環境模式: {os.environ.get('NODE_ENV', 'development')}")
     
     app.run(host='0.0.0.0', port=port, debug=debug)
+else:
+    # 用於 Gunicorn 部署
+    logger.info("應用程式已載入，準備由 Gunicorn 啟動")
