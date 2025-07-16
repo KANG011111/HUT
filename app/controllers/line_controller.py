@@ -21,6 +21,26 @@ def test_endpoint():
         'endpoint': '/api/line/webhook'
     }
 
+@line_bp.route('/line/webhook-test', methods=['POST'])
+def webhook_test():
+    """測試 POST 端點，不需要 LINE 認證"""
+    try:
+        body = request.get_data(as_text=True)
+        headers = dict(request.headers)
+        
+        logger.info(f"測試 POST 請求: {body}")
+        logger.info(f"請求標頭: {headers}")
+        
+        return {
+            'status': 'success',
+            'message': 'POST request received',
+            'body': body,
+            'headers': headers
+        }
+    except Exception as e:
+        logger.error(f"測試 POST 端點錯誤: {str(e)}")
+        return {'status': 'error', 'message': str(e)}, 500
+
 def _init_line_services():
     """初始化 LINE 服務"""
     global line_bot_api, handler, line_service
@@ -58,19 +78,26 @@ def webhook():
         signature = request.headers.get('X-Line-Signature')
         if not signature:
             logger.error("缺少 X-Line-Signature 標頭")
-            abort(400)
+            return 'Missing X-Line-Signature header', 400
         
         body = request.get_data(as_text=True)
         
         logger.info(f"收到 LINE webhook 請求: {body}")
         
+        # 檢查 handler 是否已初始化
+        if handler is None:
+            logger.error("LINE handler 未初始化")
+            return 'LINE handler not initialized', 500
+        
         handler.handle(body, signature)
     except InvalidSignatureError:
         logger.error("無效的簽章")
-        abort(400)
+        return 'Invalid signature', 400
     except Exception as e:
         logger.error(f"處理 webhook 時發生錯誤: {str(e)}")
-        abort(500)
+        import traceback
+        logger.error(f"錯誤堆疊: {traceback.format_exc()}")
+        return 'Internal server error', 500
     
     return 'OK'
 
